@@ -5,13 +5,13 @@ import { mastra } from '@/mastra'
 import { NextResponse } from 'next/server'
 
 const THREAD_ID = 'example-user-id'
-const RESOURCE_ID = 'weather-chat'
+const RESOURCE_ID = 'stock-agent'
 
 export async function POST(req: Request) {
   const params = await req.json()
   const stream = await handleChatStream({
     mastra,
-    agentId: 'weather-agent',
+    agentId: 'stock-agent',
     params: {
       ...params,
       memory: {
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const memory = await mastra.getAgentById('weather-agent').getMemory()
+  const memory = await mastra.getAgentById('stock-agent').getMemory()
   let response = null
 
   try {
