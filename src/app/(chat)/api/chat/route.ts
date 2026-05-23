@@ -34,6 +34,7 @@ export async function POST(req: Request) {
   const langchainMessages = convertToLangChainMessages(messages);
 
   const response = await agent.invoke({ messages: langchainMessages });
+  console.log(response)
   // const latestMessage = response.messages.at(-1);
   // const text = toAssistantText(latestMessage?.content);
   // console.log(text)
@@ -42,5 +43,5 @@ export async function POST(req: Request) {
   //   content: [{ type: "text", text }],
   // });
   // const stream = await agent.stream(messages)
-  return createUIMessageStreamResponse({stream})
+  return {}
 }
