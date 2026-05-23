@@ -23,7 +23,7 @@ export default function Chat() {
       <form
         onSubmit={e => {
           e.preventDefault();
-          sendMessage({ text: input });
+          sendMessage({ text: input },{headers:{ contentType: 'application/json' }});
           setInput("");
         }}
       >
