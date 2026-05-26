@@ -1,5 +1,5 @@
 import { createAgent, createMiddleware, ToolMessage } from "langchain";
-import { getWeather } from '../tools'
+import { getWeather } from "../tools";
 import { deepseekModel, deepseekProModel } from "../models";
 
 //动态模型
@@ -9,8 +9,8 @@ const dynamicModelSelection = createMiddleware({
     const messageCount = request.messages.length;
 
     return handler({
-        ...request,
-        model: messageCount > 10 ? deepseekProModel : deepseekModel,
+      ...request,
+      model: messageCount > 10 ? deepseekProModel : deepseekModel,
     });
   },
 });

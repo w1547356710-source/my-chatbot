@@ -8,7 +8,7 @@ export default function Chat() {
   const { messages, sendMessage } = useChat();
   return (
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
-      {messages.map(message => (
+      {messages.map((message) => (
         <div key={message.id} className="whitespace-pre-wrap">
           {message.role === "user" ? "User: " : "AI: "}
           {message.parts.map((part, i) => {
@@ -21,9 +21,9 @@ export default function Chat() {
       ))}
 
       <form
-        onSubmit={e => {
+        onSubmit={(e) => {
           e.preventDefault();
-          sendMessage({ text: input },{headers:{ contentType: 'application/json' }});
+          sendMessage({ text: input }, { headers: { contentType: "application/json" } });
           setInput("");
         }}
       >
@@ -31,7 +31,7 @@ export default function Chat() {
           className="fixed dark:bg-zinc-900 bottom-0 w-full max-w-md p-2 mb-8 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl"
           value={input}
           placeholder="Say something..."
-          onChange={e => setInput(e.currentTarget.value)}
+          onChange={(e) => setInput(e.currentTarget.value)}
         />
       </form>
     </div>
