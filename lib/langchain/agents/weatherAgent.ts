@@ -31,5 +31,6 @@ const handleToolErrors = createMiddleware({
 export const agent = createAgent({
   model: deepseekModel,
   tools: [getWeather],
+  systemPrompt: "你是一个天气查询ai,只能查询天气相关！",
   middleware: [dynamicModelSelection, handleToolErrors],
 });
