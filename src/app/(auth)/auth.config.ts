@@ -1,14 +1,10 @@
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export const authConfig = {
-  basePath: "/api/auth",
-  trustHost: true,
   pages: {
     signIn: `${base}/login`,
-    newUser: `${base}/`,
+    newUser: `${base}/chat`,
   },
-  providers: [],
-  callbacks: {},
-} satisfies NextAuthConfig;
+} satisfies Pick<NextAuthOptions, "pages">;

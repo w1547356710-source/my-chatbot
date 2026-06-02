@@ -1,9 +1,8 @@
-import Link from "next/link";
+import { Suspense } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { LoginForm } from "./login-form";
 
 export const metadata = {
   title: "登录",
@@ -48,85 +47,9 @@ export default function LoginPage() {
             </CardHeader>
 
             <CardContent>
-              <form className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">邮箱</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@company.com"
-                    autoComplete="email"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor="password">密码</Label>
-                    <span className="text-xs font-medium text-zinc-500">暂未启用找回密码</span>
-                  </div>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="请输入密码"
-                    autoComplete="current-password"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between rounded-xl border border-zinc-200/70 bg-zinc-50/80 px-4 py-3">
-                  <label className="flex items-center gap-2 text-sm text-zinc-600">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-300"
-                    />
-                    记住我
-                  </label>
-                  <span className="text-xs text-zinc-500">仅展示，无逻辑</span>
-                </div>
-
-                <Button type="button">登录</Button>
-
-                <div className="relative py-2">
-                  <div className="absolute inset-x-0 top-1/2 h-px bg-zinc-200" />
-                  <div className="relative mx-auto w-fit bg-white/80 px-3 text-xs uppercase tracking-[0.28em] text-zinc-400">
-                    or
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="border border-zinc-200/80 bg-white/70"
-                  >
-                    GitHub
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="border border-zinc-200/80 bg-white/70"
-                  >
-                    Google
-                  </Button>
-                </div>
-
-                <p className="text-center text-xs leading-6 text-zinc-500">
-                  继续即表示你同意{" "}
-                  <Link href="/" className="font-medium text-zinc-700 hover:text-zinc-950">
-                    服务条款
-                  </Link>{" "}
-                  与{" "}
-                  <Link href="/" className="font-medium text-zinc-700 hover:text-zinc-950">
-                    隐私政策
-                  </Link>
-                </p>
-
-                <p className="text-center text-sm text-zinc-500">
-                  还没有账户？{" "}
-                  <Link href="/register" className="font-medium text-zinc-800 hover:text-zinc-950">
-                    去注册
-                  </Link>
-                </p>
-              </form>
+              <Suspense fallback={null}>
+                <LoginForm />
+              </Suspense>
             </CardContent>
           </Card>
         </section>

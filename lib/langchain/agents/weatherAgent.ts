@@ -1,5 +1,5 @@
 import { createAgent, createMiddleware, ToolMessage } from "langchain";
-import { getWeather } from "../tools";
+import { getWeather, getGeocoding } from "../tools";
 import { deepseekModel, deepseekProModel } from "../models";
 
 //动态模型
@@ -30,7 +30,7 @@ const handleToolErrors = createMiddleware({
 });
 export const agent = createAgent({
   model: deepseekModel,
-  tools: [getWeather],
+  tools: [getWeather, getGeocoding],
   systemPrompt: "你是一个天气查询ai,只能查询天气相关！",
   middleware: [dynamicModelSelection, handleToolErrors],
 });
