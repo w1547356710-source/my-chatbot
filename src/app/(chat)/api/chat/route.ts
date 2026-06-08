@@ -1,15 +1,21 @@
 import { agent } from "@lib/langchain/agents/weatherAgent";
 import { toBaseMessages, toUIMessageStream } from "@ai-sdk/langchain";
-import { createUIMessageStreamResponse, UIMessage, UIMessageChunk } from "ai";
+import { createUIMessageStreamResponse, UIMessage } from "ai";
 import { NextResponse } from "next/server";
-
+import { v4 as uuidv4 } from "uuid";
 export async function POST(req: Request) {
   try {
     const { messages }: { messages: UIMessage[] } = await req.json();
     const langchainMessages = await toBaseMessages(messages);
-    const stream = await agent.stream(
+    const myThreadId = uuidv4();
+    const stream = agent.streamEvents(
       { messages: langchainMessages },
-      { streamMode: ["values", "messages"] },
+      {
+        streamMode: ["values", "messages"],
+        configurable: {
+          thread_id: myThreadId,
+        },
+      },
     );
     return createUIMessageStreamResponse({
       stream: toUIMessageStream(stream),
@@ -26,11 +32,12 @@ export async function POST(req: Request) {
 //     console.log(messages);
 //     const stream = await agent.streamEvents({ messages }, { version: "v3" });
 
-//     const encoder = new TextEncoder();
+//     // const encoder = new TextEncoder();
 //     const readableStream = new ReadableStream({
 //       async pull(controller) {
 //         for await (const event of stream) {
-//           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+//           console.log(event);
+//           controller.enqueue(event);
 //         }
 //         controller.close();
 //       },

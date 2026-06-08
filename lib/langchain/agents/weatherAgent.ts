@@ -1,7 +1,8 @@
 import { createAgent, createMiddleware, ToolMessage } from "langchain";
 import { getWeather, getGeocoding } from "../tools";
 import { deepseekModel, deepseekProModel } from "../models";
-
+import { StateSchema, MemorySaver } from "@langchain/langgraph";
+import * as z from "zod";
 //动态模型
 const dynamicModelSelection = createMiddleware({
   name: "DynamicModelSelection",
@@ -28,9 +29,20 @@ const handleToolErrors = createMiddleware({
     }
   },
 });
+const CustomState = new StateSchema({
+  userId: z.string(),
+  preferences: z.record(z.string(), z.any()),
+});
+const stateExtensionMiddleware = createMiddleware({
+  name: "StateExtension",
+  stateSchema: CustomState,
+});
+
+const checkpointer = new MemorySaver();
 export const agent = createAgent({
   model: deepseekModel,
   tools: [getWeather, getGeocoding],
   systemPrompt: "你是一个天气查询ai,只能查询天气相关！",
-  middleware: [dynamicModelSelection, handleToolErrors],
+  middleware: [dynamicModelSelection, handleToolErrors, stateExtensionMiddleware],
+  checkpointer,
 });

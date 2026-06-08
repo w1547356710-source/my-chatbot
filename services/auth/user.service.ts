@@ -13,7 +13,15 @@ export async function createUser(email: string, password: string) {
     throw new AuthServiceError("USER_EXISTS", "该邮箱已注册");
   }
 
-  return userRepo.createUser(email, password);
+  try {
+    return await userRepo.createUser(email, password);
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw new AuthServiceError("USER_EXISTS", "该邮箱已注册");
+    }
+
+    throw error;
+  }
 }
 
 export async function createGuestUser() {
@@ -59,4 +67,13 @@ export class AuthServiceError extends Error {
     super(message);
     this.name = "AuthServiceError";
   }
+}
+
+function isUniqueViolation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "23505"
+  );
 }

@@ -1,18 +1,28 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 const suggestions = ["今天杭州天气怎么样？", "测试"];
 
 export default function Chat() {
   const [input, setInput] = useState("");
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const { error, messages, sendMessage, status, stop } = useChat();
+  const { error, messages, sendMessage, status, stop, addToolOutput } = useChat({
+    onToolCall: async ({ toolCall }) => {
+      console.log(toolCall);
+      // addToolOutput({
+      //   tool: "getLocation",
+      //   toolCallId: toolCall.toolCallId,
+      //   output: position,
+      // })
+    },
+  });
   const isBusy = status === "submitted" || status === "streaming";
 
   useLayoutEffect(() => {
@@ -24,7 +34,6 @@ export default function Chat() {
 
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }, [error, messages, status]);
-
   const submitMessage = (text: string) => {
     const nextMessage = text.trim();
 
@@ -139,7 +148,11 @@ export default function Chat() {
                         <div className="whitespace-pre-wrap break-words">
                           {message.parts.map((part, index) => {
                             if (part.type === "text") {
-                              return <p key={`${message.id}-${index}`}>{part.text}</p>;
+                              return (
+                                <ReactMarkdown key={index} remarkPlugins={[remarkGfm]}>
+                                  {part.text}
+                                </ReactMarkdown>
+                              );
                             }
 
                             return null;
