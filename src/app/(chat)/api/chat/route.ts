@@ -25,32 +25,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
-// export async function POST(req: Request) {
-//   try {
-//     const { messages } = await req.json();
-//     console.log(messages);
-//     const stream = await agent.streamEvents({ messages }, { version: "v3" });
-
-//     // const encoder = new TextEncoder();
-//     const readableStream = new ReadableStream({
-//       async pull(controller) {
-//         for await (const event of stream) {
-//           console.log(event);
-//           controller.enqueue(event);
-//         }
-//         controller.close();
-//       },
-//     });
-//     // return NextResponse.json({ finalState }, { status: 200 });
-
-//     return new Response(readableStream, {
-//       headers: {
-//         "Content-Type": "text/event-stream",
-//       },
-//     });
-//   } catch (error) {
-//     const message = error instanceof Error ? error.message : "An unknown error occurred";
-//     return NextResponse.json({ error: message }, { status: 500 });
-//   }
-// }
