@@ -215,7 +215,7 @@ export default function Chat() {
 // import { useStream } from "@langchain/react";
 // import ReactMarkdown from "react-markdown";
 // import remarkGfm from "remark-gfm";
-// import { agent } from "@lib/langchain/agents/weatherAgent";
+// import type { agent } from "@my-nextjs-agent/agent";
 // export default function ChatPage() {
 //   const [input, setInput] = useState("");
 

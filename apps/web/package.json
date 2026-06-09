@@ -1,0 +1,52 @@
+{
+  "name": "@my-nextjs-agent/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:check": "drizzle-kit check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@ai-sdk/langchain": "^2.0.197",
+    "@ai-sdk/react": "^3.0.193",
+    "@auth/drizzle-adapter": "^1.11.2",
+    "@auth/neon-adapter": "^1.11.2",
+    "@langchain/react": "^1.0.11",
+    "@my-nextjs-agent/agent": "workspace:*",
+    "@neondatabase/serverless": "^1.1.0",
+    "ai": "^6.0.191",
+    "bcrypt-ts": "^8.0.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "next": "16.2.6",
+    "next-auth": "^4.24.14",
+    "postgres": "^3.4.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "uuid": "^14.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "eslint-config-prettier": "^10.1.8",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

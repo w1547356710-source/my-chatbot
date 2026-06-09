@@ -1,0 +1,29 @@
+{
+  "name": "@my-nextjs-agent/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "langgraph:config": "create langgraph config",
+    "langgraph:dev": "langgraph dev --config langgraph.json"
+  },
+  "dependencies": {
+    "@langchain/deepseek": "^1.0.27",
+    "@langchain/langgraph": "^1.3.3",
+    "langchain": "^1.4.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@langchain/langgraph-cli": "^1.2.4",
+    "@types/node": "^20",
+    "tsx": "^4.22.3",
+    "typescript": "^5"
+  }
+}

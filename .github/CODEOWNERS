@@ -1,0 +1,9 @@
+# Replace these placeholders with real GitHub users or teams, then enable
+# "Require review from Code Owners" in branch protection.
+#
+# A single Git repository cannot enforce true subdirectory read/write ACLs.
+# Use submodules or separate repositories if strict Git permission isolation is required.
+
+/apps/web/ @your-org/web-team
+/packages/agent/ @your-org/agent-team
+/docs/repo-ownership.md @your-org/platform-team
