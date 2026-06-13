@@ -1,48 +1,14 @@
-import { createAgent, createMiddleware, ToolMessage } from "langchain";
+import { createAgent } from "langchain";
 import { getWeather, getGeocoding } from "../tools";
-import { deepseekModel, deepseekProModel } from "../models";
-import { StateSchema, MemorySaver } from "@langchain/langgraph";
-import * as z from "zod";
-//动态模型
-const dynamicModelSelection = createMiddleware({
-  name: "DynamicModelSelection",
-  wrapModelCall: (request, handler) => {
-    const messageCount = request.messages.length;
-
-    return handler({
-      ...request,
-      model: messageCount > 10 ? deepseekProModel : deepseekModel,
-    });
-  },
-});
-const handleToolErrors = createMiddleware({
-  name: "HandleToolErrors",
-  wrapToolCall: async (request, handler) => {
-    try {
-      return await handler(request);
-    } catch (error) {
-      // Return a custom error message to the model
-      return new ToolMessage({
-        content: `Tool error: Please check your input and try again. (${error})`,
-        tool_call_id: request.toolCall.id!,
-      });
-    }
-  },
-});
-const CustomState = new StateSchema({
-  userId: z.string(),
-  preferences: z.record(z.string(), z.any()),
-});
-const stateExtensionMiddleware = createMiddleware({
-  name: "StateExtension",
-  stateSchema: CustomState,
-});
+import { deepseekModel } from "../models";
+import { MemorySaver } from "@langchain/langgraph";
+import { dynamicModelSelection, handleToolErrors, weatherStateMiddleware } from "../middleware";
 
 const checkpointer = new MemorySaver();
-export const agent = createAgent({
+export const weatherAgent = createAgent({
   model: deepseekModel,
   tools: [getWeather, getGeocoding],
   systemPrompt: "你是一个天气查询ai,只能查询天气相关！",
-  middleware: [dynamicModelSelection, handleToolErrors, stateExtensionMiddleware],
+  middleware: [dynamicModelSelection, handleToolErrors, weatherStateMiddleware],
   checkpointer,
 });

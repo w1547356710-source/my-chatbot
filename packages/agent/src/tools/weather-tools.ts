@@ -11,7 +11,8 @@ export const getGeocoding = tool(
   },
   {
     name: "get_heocoding",
-    description: "Get city Geocoding information for city,如果传入city是中文先转换拼音再传入",
+    description:
+      "Get city Geocoding information for city, If the passed city is in Chinese, first convert it to pinyin before passing it in",
     schema: z.object({
       city: z.string().describe("The city to get weather for"),
     }),

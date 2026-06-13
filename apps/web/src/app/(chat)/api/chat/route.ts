@@ -1,4 +1,4 @@
-import { agent } from "@my-nextjs-agent/agent";
+import { weatherAgent } from "@my-nextjs-agent/agent";
 import { toBaseMessages, toUIMessageStream } from "@ai-sdk/langchain";
 import { createUIMessageStreamResponse, UIMessage } from "ai";
 import { NextResponse } from "next/server";
@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const { messages }: { messages: UIMessage[] } = await req.json();
     const langchainMessages = await toBaseMessages(messages);
     const myThreadId = uuidv4();
-    const stream = agent.streamEvents(
+    const stream = weatherAgent.streamEvents(
       { messages: langchainMessages },
       {
         streamMode: ["values", "messages"],
