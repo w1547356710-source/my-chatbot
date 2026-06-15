@@ -14,6 +14,7 @@
     "db:migrate": "pnpm --filter @my-nextjs-agent/web db:migrate",
     "db:push": "pnpm --filter @my-nextjs-agent/web db:push",
     "db:studio": "pnpm --filter @my-nextjs-agent/web db:studio",
+    "agent:config": "pnpm --filter @my-nextjs-agent/agent langgraph:config",
     "agent:dev": "pnpm --filter @my-nextjs-agent/agent langgraph:dev",
     "format": "prettier --write .",
     "format:fix": "prettier --write .",
@@ -27,5 +28,8 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.5",
     "prettier": "^3.8.3"
+  },
+  "dependencies": {
+    "vitest": "^4.1.8"
   }
 }

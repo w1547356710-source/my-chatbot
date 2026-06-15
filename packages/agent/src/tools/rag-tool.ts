@@ -1,11 +1,15 @@
 import { tool } from "langchain";
 import * as z from "zod";
-import { OpenAIEmbeddings } from "@langchain/openai";
+import { Document } from "@langchain/core/documents";
 import { PineconeStore } from "@langchain/pinecone";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Pinecone as PineconeClient } from "@pinecone-database/pinecone";
+import { OllamaEmbeddings } from "@langchain/ollama";
 
 const DEFAULT_INDEX_NAME = process.env.PINECONE_INDEX_NAME ?? "document";
 const DEFAULT_TOP_K = 4;
+const DEFAULT_CHUNK_SIZE = 1200;
+const DEFAULT_CHUNK_OVERLAP = 200;
 
 let vectorStorePromise: Promise<PineconeStore> | undefined;
 
@@ -17,11 +21,11 @@ function getRequiredEnv(name: string): string {
   return value;
 }
 
-async function getVectorStore(): Promise<PineconeStore> {
+export async function getVectorStore(): Promise<PineconeStore> {
   if (!vectorStorePromise) {
     vectorStorePromise = (async () => {
-      const embeddings = new OpenAIEmbeddings({
-        model: "text-embedding-3-large",
+      const embeddings = new OllamaEmbeddings({
+        model: "bge-m3",
       });
 
       const pinecone = new PineconeClient({
@@ -35,12 +39,25 @@ async function getVectorStore(): Promise<PineconeStore> {
       return new PineconeStore(embeddings, {
         pineconeIndex,
         maxConcurrency: 5,
-        namespace: process.env.PINECONE_NAMESPACE,
       });
     })();
   }
 
   return vectorStorePromise;
+}
+
+function filterNonEmptyDocuments(documents: Document[]): Document[] {
+  return documents.filter((document) => document.pageContent.trim().length > 0);
+}
+
+function normalizeMetadata(
+  metadata: Record<string, string | number | boolean> | undefined,
+  source: string,
+): Record<string, string | number | boolean> {
+  return {
+    source,
+    ...(metadata ?? {}),
+  };
 }
 
 export const retrieveFromPinecone = tool(
@@ -101,6 +118,93 @@ export const retrieveFromPinecone = tool(
         .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
         .optional()
         .describe("Optional metadata filter for Pinecone similarity search"),
+    }),
+  },
+);
+
+export const ingestToPinecone = tool(
+  async ({
+    content,
+    source,
+    metadata,
+    chunkSize = DEFAULT_CHUNK_SIZE,
+    chunkOverlap = DEFAULT_CHUNK_OVERLAP,
+  }: {
+    content: string;
+    source: string;
+    metadata?: Record<string, string | number | boolean>;
+    chunkSize?: number;
+    chunkOverlap?: number;
+  }): Promise<string> => {
+    try {
+      const vectorStore = await getVectorStore();
+      const splitter = new RecursiveCharacterTextSplitter({
+        chunkSize,
+        chunkOverlap,
+      });
+
+      const baseDocument = new Document({
+        pageContent: content,
+        metadata: normalizeMetadata(metadata, source),
+      });
+
+      const allSplits = await splitter.splitDocuments([baseDocument]);
+      const nonEmptySplits = filterNonEmptyDocuments(allSplits);
+
+      if (nonEmptySplits.length === 0) {
+        return [
+          "RAG ingestion skipped.",
+          `Source: ${source}`,
+          "Chunks added: 0",
+          "Reason: no non-empty chunks were produced from the input content.",
+        ].join("\n");
+      }
+
+      await vectorStore.addDocuments(nonEmptySplits);
+
+      return [
+        "RAG ingestion succeeded.",
+        `Source: ${source}`,
+        `Chunks added: ${nonEmptySplits.length}`,
+        `Chunk size: ${chunkSize}`,
+        `Chunk overlap: ${chunkOverlap}`,
+      ].join("\n");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return `RAG ingestion failed: ${message}`;
+    }
+  },
+  {
+    name: "ingest_to_pinecone",
+    description:
+      "Split large text into chunks and add the chunks into the Pinecone vector store for later RAG retrieval.",
+    schema: z.object({
+      content: z
+        .string()
+        .min(1)
+        .describe("The full text content that should be chunked and stored in Pinecone"),
+      source: z
+        .string()
+        .min(1)
+        .describe("A stable source identifier such as a file path, URL, or document ID"),
+      metadata: z
+        .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+        .optional()
+        .describe("Optional metadata stored on every chunk"),
+      chunkSize: z
+        .number()
+        .int()
+        .min(200)
+        .max(4000)
+        .default(DEFAULT_CHUNK_SIZE)
+        .describe("Maximum characters per chunk"),
+      chunkOverlap: z
+        .number()
+        .int()
+        .min(0)
+        .max(1000)
+        .default(DEFAULT_CHUNK_OVERLAP)
+        .describe("Overlapping characters between adjacent chunks"),
     }),
   },
 );

@@ -2,7 +2,8 @@
   "node_version": "22",
   "graphs": {
     "ragAgent": "./src\\agents\\ragAgent.ts:ragAgent",
-    "weatherAgent": "./src\\agents\\weatherAgent.ts:weatherAgent"
+    "weatherAgent": "./src\\agents\\weatherAgent.ts:weatherAgent",
+    "graph": "./src\\example\\ragAgent-langgraph.ts:graph"
   },
   "env": ".env"
 }
