@@ -1,270 +1,374 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStream } from "@langchain/react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-const suggestions = ["今天杭州天气怎么样？", "测试"];
+import type { weatherAgent } from "@my-nextjs-agent/agent";
 
-export default function Chat() {
+type ToolCallStatus = "running" | "finished" | "error";
+
+type ToolCallLike = {
+  name: string;
+  callId: string;
+  input?: unknown;
+  args?: unknown;
+  output?: unknown;
+  status: ToolCallStatus;
+  error?: string;
+};
+
+type MessageToolCallRef = {
+  id?: string;
+};
+
+type MessageLike = {
+  id: string;
+  type: string;
+  text: string;
+  tool_calls?: MessageToolCallRef[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function formatJson(value: unknown) {
+  return JSON.stringify(value, null, 2);
+}
+
+function ToolCallCard({ toolCall }: { toolCall: ToolCallLike }) {
+  if (toolCall.status === "running") {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-900">
+        <div className="flex items-center gap-3">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-amber-500" />
+          <div>
+            <p className="font-semibold">正在调用 {toolCall.name}</p>
+            <p className="mt-1 text-xs text-amber-700">参数已发送，等待工具返回结果</p>
+          </div>
+        </div>
+        {toolCall.input ? (
+          <pre className="mt-3 overflow-x-auto rounded-xl bg-white/80 p-3 text-xs leading-6 text-slate-700">
+            {formatJson(toolCall.input)}
+          </pre>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (toolCall.status === "error") {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50/90 p-4 text-sm text-red-900">
+        <p className="font-semibold">{toolCall.name} 调用失败</p>
+        <p className="mt-1 text-xs leading-6 text-red-700">
+          {toolCall.error ?? "Tool execution failed"}
+        </p>
+      </div>
+    );
+  }
+
+  if (toolCall.name === "get_weather") {
+    const input = isRecord(toolCall.input) ? toolCall.input : {};
+    const output = isRecord(toolCall.output) ? toolCall.output : {};
+    const hourly = isRecord(output.hourly) ? output.hourly : {};
+    const temperatures = Array.isArray(hourly.temperature_2m) ? hourly.temperature_2m : [];
+    const timeline = Array.isArray(hourly.time) ? hourly.time : [];
+    const firstTemperature = temperatures[0];
+    const firstTime = timeline[0];
+
+    return (
+      <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4 text-sm text-slate-800">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.18em] text-sky-700 uppercase">
+              Weather Tool
+            </p>
+            <p className="mt-1 font-semibold text-slate-950">已查询天气数据</p>
+          </div>
+          <div className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 shadow-sm">
+            lat {String(input.latitude ?? "-")} / lon {String(input.longitude ?? "-")}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-white/90 p-3 shadow-sm">
+            <p className="text-xs text-slate-500">首个温度值</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">
+              {typeof firstTemperature === "number" ? `${firstTemperature}°C` : "--"}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/90 p-3 shadow-sm sm:col-span-2">
+            <p className="text-xs text-slate-500">首个时间点</p>
+            <p className="mt-1 truncate text-sm font-medium text-slate-800">
+              {typeof firstTime === "string" ? firstTime : "暂无时间数据"}
+            </p>
+          </div>
+        </div>
+
+        <pre className="mt-3 overflow-x-auto rounded-xl bg-white/80 p-3 text-xs leading-6 text-slate-700">
+          {formatJson(toolCall.output)}
+        </pre>
+      </div>
+    );
+  }
+
+  if (toolCall.name === "get_heocoding") {
+    const input = isRecord(toolCall.input) ? toolCall.input : {};
+    const output = isRecord(toolCall.output) ? toolCall.output : {};
+    const results = Array.isArray(output.results) ? output.results : [];
+    const firstResult = isRecord(results[0]) ? results[0] : {};
+
+    return (
+      <div className="rounded-2xl border border-violet-200 bg-violet-50/80 p-4 text-sm text-slate-800">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.18em] text-violet-700 uppercase">
+              Geocoding Tool
+            </p>
+            <p className="mt-1 font-semibold text-slate-950">
+              已定位 {String(input.city ?? "目标城市")}
+            </p>
+          </div>
+          <div className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 shadow-sm">
+            {results.length} 条候选结果
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-white/90 p-3 shadow-sm">
+            <p className="text-xs text-slate-500">最佳匹配</p>
+            <p className="mt-1 text-sm font-semibold text-slate-950">
+              {String(firstResult.name ?? "暂无结果")}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/90 p-3 shadow-sm">
+            <p className="text-xs text-slate-500">国家</p>
+            <p className="mt-1 text-sm font-semibold text-slate-950">
+              {String(firstResult.country ?? "--")}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/90 p-3 shadow-sm">
+            <p className="text-xs text-slate-500">坐标</p>
+            <p className="mt-1 text-sm font-semibold text-slate-950">
+              {String(firstResult.latitude ?? "--")}, {String(firstResult.longitude ?? "--")}
+            </p>
+          </div>
+        </div>
+
+        <pre className="mt-3 overflow-x-auto rounded-xl bg-white/80 p-3 text-xs leading-6 text-slate-700">
+          {formatJson(toolCall.output)}
+        </pre>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 text-sm text-slate-800">
+      <p className="font-semibold text-slate-950">{toolCall.name}</p>
+      <p className="mt-1 text-xs text-slate-500">未定制的工具调用，展示原始数据</p>
+      <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 text-xs leading-6 text-slate-700">
+        {formatJson({
+          input: toolCall.input,
+          output: toolCall.output,
+          status: toolCall.status,
+          error: toolCall.error,
+        })}
+      </pre>
+    </div>
+  );
+}
+
+export default function ChatPage() {
   const [input, setInput] = useState("");
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const { error, messages, sendMessage, status, stop, addToolOutput } = useChat({
-    onToolCall: async ({ toolCall }) => {
-      console.log(toolCall);
-      // addToolOutput({
-      //   tool: "getLocation",
-      //   toolCallId: toolCall.toolCallId,
-      //   output: position,
-      // })
-    },
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  const stream = useStream<typeof weatherAgent>({
+    apiUrl: "http://localhost:2024",
+    assistantId: "weatherAgent",
   });
-  const isBusy = status === "submitted" || status === "streaming";
+  const { messages, isLoading, interrupt, toolCalls } = stream;
 
-  useLayoutEffect(() => {
-    const messagesContainer = messagesContainerRef.current;
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, isLoading]);
 
-    if (!messagesContainer) {
-      return;
-    }
+  const sendMessage = () => {
+    const content = input.trim();
+    if (!content || isLoading) return;
 
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  }, [error, messages, status]);
-  const submitMessage = (text: string) => {
-    const nextMessage = text.trim();
-
-    if (!nextMessage || isBusy) {
-      return;
-    }
-
-    sendMessage({ text: nextMessage });
+    stream.submit({ messages: [{ type: "human" as const, content }] });
     setInput("");
   };
 
-  return (
-    <main className="h-dvh overflow-hidden bg-zinc-50 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
-      <div className="mx-auto flex h-full w-full max-w-5xl flex-col px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <header className="mb-4 flex shrink-0 items-center justify-between gap-4 sm:mb-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-950 text-sm font-semibold text-white shadow-sm dark:bg-white dark:text-zinc-950">
-              AI
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight">ChatRobot</h1>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">智能助手</p>
-            </div>
-          </div>
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage();
+  };
 
-          <div className="hidden items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 sm:flex">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            {isBusy ? "正在回复" : "在线"}
+  const hasMessages = messages.length > 0;
+  const typedMessages = messages as MessageLike[];
+  const typedToolCalls = (toolCalls ?? []) as ToolCallLike[];
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_32%),linear-gradient(180deg,_#f8fbff_0%,_#eef4ff_45%,_#f8fafc_100%)] px-4 py-6 text-slate-900">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-5xl flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
+        <header className="border-b border-slate-200/80 px-6 py-5 sm:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-2">
+              <span className="inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium tracking-[0.2em] text-blue-700 uppercase">
+                Agent Chat
+              </span>
+              <div className="space-y-1">
+                <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+                  和天气助手自然对话
+                </h1>
+                <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                  支持流式回复与 Markdown 展示，适合查询天气、趋势和出行建议。
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  isLoading
+                    ? "bg-amber-500 shadow-[0_0_0_6px_rgba(245,158,11,0.14)]"
+                    : "bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.14)]"
+                }`}
+              />
+              <div className="text-sm">
+                <p className="font-medium text-slate-800">
+                  {isLoading ? "正在生成回复" : "助手在线"}
+                </p>
+                <p className="text-slate-500">
+                  {hasMessages ? `共 ${messages.length} 条消息` : "发送一条消息开始对话"}
+                </p>
+              </div>
+            </div>
           </div>
         </header>
 
-        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <CardHeader className="shrink-0 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:px-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base">对话</CardTitle>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  输入问题后按 Enter 发送
-                </p>
+        <section className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
+          {!hasMessages ? (
+            <div className="flex h-full min-h-[420px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-300/90 bg-white/65 px-6 text-center">
+              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 text-2xl text-white shadow-lg">
+                AI
               </div>
-              {isBusy ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={stop}
-                  className="h-9 !w-auto rounded-lg border border-zinc-200 px-3 dark:border-zinc-800"
-                >
-                  停止
-                </Button>
-              ) : null}
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
+                开始一次更顺手的聊天
+              </h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
+                试试输入“北京这周末天气怎么样”或“帮我比较上海和广州今天的体感温度”。
+              </p>
             </div>
-          </CardHeader>
+          ) : (
+            <div className="space-y-5 pb-4">
+              {typedMessages.map((msg) => {
+                const messageToolCalls = typedToolCalls.filter((toolCall) =>
+                  msg.tool_calls?.some((messageToolCall) => messageToolCall.id === toolCall.callId),
+                );
 
-          <CardContent className="flex min-h-0 flex-1 flex-col px-0 pb-0">
-            <div
-              ref={messagesContainerRef}
-              className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-5"
-            >
-              {messages.length === 0 ? (
-                <section className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center text-center">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-base font-semibold text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
-                    AI
-                  </div>
-                  <h2 className="text-xl font-semibold tracking-tight">开始一次对话</h2>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                    你可以向ChatRobot询问天气。
-                  </p>
-                  <div className="mt-6 grid w-full gap-2 sm:grid-cols-3">
-                    {suggestions.map((suggestion) => (
-                      <Button
-                        key={suggestion}
-                        type="button"
-                        variant="ghost"
-                        onClick={() => submitMessage(suggestion)}
-                        className="h-auto min-h-11 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-xs leading-5 text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                      >
-                        {suggestion}
-                      </Button>
-                    ))}
-                  </div>
-                </section>
-              ) : (
-                messages.map((message) => {
-                  const isUser = message.role === "user";
-
-                  return (
-                    <article
-                      key={message.id}
-                      className={["flex gap-3", isUser ? "justify-end" : "justify-start"]
-                        .filter(Boolean)
-                        .join(" ")}
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.type === "human" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-[24px] px-4 py-3 shadow-sm sm:max-w-[75%] ${
+                        msg.type === "human"
+                          ? "rounded-br-md bg-slate-950 text-white"
+                          : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
+                      }`}
                     >
-                      {!isUser ? (
-                        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-950 text-[11px] font-semibold text-white dark:bg-white dark:text-zinc-950">
-                          AI
-                        </div>
-                      ) : null}
-
-                      <div
-                        className={[
-                          "max-w-[82%] rounded-lg px-4 py-3 text-sm leading-6 shadow-sm",
-                          isUser
-                            ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950"
-                            : "border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
+                      <p
+                        className={`mb-2 text-[11px] font-semibold tracking-[0.18em] uppercase ${
+                          msg.type === "human" ? "text-slate-300" : "text-blue-600"
+                        }`}
                       >
-                        <div className="mb-1 text-xs font-medium opacity-70">
-                          {isUser ? "你" : "ChatRobot"}
-                        </div>
-                        <div className="whitespace-pre-wrap break-words">
-                          {message.parts.map((part, index) => {
-                            if (part.type === "text") {
-                              return (
-                                <ReactMarkdown key={index} remarkPlugins={[remarkGfm]}>
-                                  {part.text}
-                                </ReactMarkdown>
-                              );
-                            }
+                        {msg.type === "human" ? "You" : "Assistant"}
+                      </p>
 
-                            return null;
-                          })}
+                      {msg.type === "ai" ? (
+                        <div className="space-y-3">
+                          <div className="prose prose-slate max-w-none text-sm leading-7 prose-p:my-2 prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:bg-slate-950 prose-pre:px-4 prose-pre:py-3 prose-code:text-sm prose-strong:text-inherit">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                          </div>
+                          {messageToolCalls.length > 0 ? (
+                            <div className="space-y-3">
+                              {messageToolCalls.map((toolCall) => (
+                                <ToolCallCard key={toolCall.callId} toolCall={toolCall} />
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
-                      </div>
-                    </article>
-                  );
-                })
-              )}
+                      ) : (
+                        <p className="whitespace-pre-wrap text-sm leading-7">{msg.text}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
 
-              {isBusy ? (
-                <div className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                  ChatRobot 正在思考
+              {isLoading ? (
+                <div className="flex justify-start">
+                  <div className="rounded-[24px] rounded-bl-md border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
-              {error ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
-                  {error.message}
-                </div>
-              ) : null}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </section>
+
+        <footer className="border-t border-slate-200/80 bg-white/90 px-4 py-4 sm:px-8">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] focus-within:border-blue-400 focus-within:bg-white">
+              <textarea
+                className="min-h-[96px] w-full resize-none bg-transparent px-4 py-4 text-sm leading-7 text-slate-900 outline-none placeholder:text-slate-400"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+                placeholder="输入天气问题，按 Enter 发送，Shift + Enter 换行"
+              />
             </div>
 
-            <form
-              className="shrink-0 border-t border-zinc-100 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:p-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submitMessage(input);
-              }}
-            >
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                <Input
-                  value={input}
-                  placeholder="输入消息..."
-                  disabled={isBusy}
-                  className="min-w-0 rounded-lg"
-                  onChange={(event) => setInput(event.currentTarget.value)}
-                />
-                <Button
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">回复将实时流式渲染，支持表格、列表和代码块。</p>
+
+              <div className="flex items-center gap-3">
+                {isLoading ? (
+                  <button
+                    type="button"
+                    onClick={() => interrupt()}
+                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
+                  >
+                    停止生成
+                  </button>
+                ) : null}
+                <button
                   type="submit"
-                  disabled={!input.trim() || isBusy}
-                  className="h-11 !w-auto shrink-0 rounded-lg px-5"
+                  disabled={!input.trim() || isLoading}
+                  className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  发送
-                </Button>
+                  {isLoading ? "生成中..." : "发送消息"}
+                </button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+          </form>
+        </footer>
       </div>
     </main>
   );
 }
-
-// "use client";
-
-// import { useState } from "react";
-// import { useStream } from "@langchain/react";
-// import ReactMarkdown from "react-markdown";
-// import remarkGfm from "remark-gfm";
-// import type { agent } from "@my-nextjs-agent/agent";
-// export default function ChatPage() {
-//   const [input, setInput] = useState("");
-
-//   // 1. 初始化流式连接
-//   const stream = useStream<typeof agent>({
-//     apiUrl: "/api/chat",
-//     assistantId: "wether",
-//   });
-//   const { messages, isLoading, interrupt } = stream;
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault();
-//     console.log(input);
-//     if (!input.trim()) return;
-//     // 2. 发送消息到 Agent
-//     stream.submit({ messages: [{ type: "human" as const, content: input }] });
-//     setInput("");
-//   };
-
-//   return (
-//     <div className="max-w-2xl mx-auto p-4 space-y-4">
-//       {/* 消息列表 */}
-//       <div className="space-y-4">
-//         {messages.map((msg) => (
-//           <div key={msg.id} className={msg.type === "human" ? "text-right" : "text-left"}>
-//             <div
-//               className={`inline-block p-3 rounded-lg ${msg.type === "human" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
-//             >
-//               {msg.type === "ai" ? (
-//                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
-//               ) : (
-//                 <p>{msg.text}</p>
-//               )}
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* 输入框 */}
-//       <form onSubmit={handleSubmit} className="fixed bottom-4 w-full max-w-2xl flex gap-2">
-//         <input
-//           className="flex-1 border p-2 rounded"
-//           value={input}
-//           onChange={(e) => setInput(e.target.value)}
-//           placeholder="请输入消息..."
-//         />
-//         <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-//           发送
-//         </button>
-//       </form>
-//     </div>
-//   );
-// }

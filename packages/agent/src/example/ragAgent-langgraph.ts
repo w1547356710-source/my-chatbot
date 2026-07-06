@@ -1,19 +1,52 @@
 import * as cheerio from "cheerio";
 import { Document } from "@langchain/core/documents";
-import { MessagesAnnotation, Annotation } from "@langchain/langgraph";
+import { MessagesAnnotation, Annotation, Command } from "@langchain/langgraph";
+import { OllamaEmbeddings } from "@langchain/ollama";
 const State = MessagesAnnotation;
 const GraphState = MessagesAnnotation; // Annotation.Root({});
+
+const FETCH_TIMEOUT_MS = 15_000;
+
 // 预处理文档
 async function loadWebPage(url: string, selector: string = "body"): Promise<Document[]> {
-  const response = await fetch(url);
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  return [
-    new Document({
-      pageContent: $(selector).text(),
-      metadata: { source: url },
-    }),
-  ];
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "user-agent": "my-nextjs-agent-rag-example/1.0",
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`Skipping ${url}: received HTTP ${response.status}.`);
+      return [];
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const pageContent = $(selector).text().trim();
+
+    if (!pageContent) {
+      console.warn(`Skipping ${url}: selector "${selector}" produced empty content.`);
+      return [];
+    }
+
+    return [
+      new Document({
+        pageContent,
+        metadata: { source: url },
+      }),
+    ];
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Skipping ${url}: fetch failed (${message}).`);
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 const urls = [
@@ -27,6 +60,12 @@ const docs = await Promise.all(urls.map((url) => loadWebPage(url)));
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 const docsList = docs.flat();
+
+if (docsList.length === 0) {
+  throw new Error(
+    "Failed to load any source documents. Check network access or replace the example URLs.",
+  );
+}
 
 const textSplitter = new RecursiveCharacterTextSplitter({
   chunkSize: 500,
@@ -44,7 +83,6 @@ if (nonEmptyDocSplits.length === 0) {
   throw new Error("No non-empty document chunks were produced for Pinecone ingestion.");
 }
 
-await vectorStore.addDocuments(nonEmptyDocSplits);
 const retriever = vectorStore.asRetriever();
 const tool = retriever.asTool({
   name: "retrieve_blog_posts",
@@ -100,9 +138,13 @@ const gradeDocuments: GraphNode<typeof State> = async (state) => {
   });
 
   if (score.binaryScore === "yes") {
-    return "generate";
+    return new Command({
+      goto: "generate",
+    });
   }
-  return "rewrite";
+  return new Command({
+    goto: "rewrite",
+  });
 };
 
 const rewritePrompt = ChatPromptTemplate.fromTemplate(
@@ -177,16 +219,6 @@ const builder = new StateGraph(GraphState)
   // Decide whether to retrieve
   .addConditionalEdges("generateQueryOrRespond", shouldRetrieve)
   .addEdge("retrieve", "gradeDocuments")
-  // Edges taken after grading documents
-  .addConditionalEdges(
-    "gradeDocuments",
-    // Route based on grading decision
-    (state) => {
-      // The gradeDocuments function returns either "generate" or "rewrite"
-      const lastMessage = state.messages.at(-1);
-      return lastMessage.content === "generate" ? "generate" : "rewrite";
-    },
-  )
   .addEdge("generate", END)
   .addEdge("rewrite", "generateQueryOrRespond");
 
