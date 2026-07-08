@@ -264,8 +264,8 @@ export default function ChatPage() {
             </div>
           ) : (
             <div className="space-y-5 pb-4">
-              {typedMessages.map((msg) => {
-                const messageToolCalls = typedToolCalls.filter((toolCall) =>
+              {messages.map((msg) => {
+                const messageToolCalls = toolCalls.filter((toolCall) =>
                   msg.tool_calls?.some((messageToolCall) => messageToolCall.id === toolCall.callId),
                 );
 
