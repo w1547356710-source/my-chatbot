@@ -1,4 +1,4 @@
-import { weatherAgent } from "@my-nextjs-agent/agent";
+import { weatherAgent } from "@my-nextjs-agent/agent/weather";
 import { toBaseMessages, toUIMessageStream } from "@ai-sdk/langchain";
 import { createUIMessageStreamResponse, UIMessage } from "ai";
 import { NextResponse } from "next/server";

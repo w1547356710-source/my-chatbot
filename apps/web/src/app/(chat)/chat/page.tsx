@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useStream } from "@langchain/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { weatherAgent } from "@my-nextjs-agent/agent";
+import type { weatherAgent } from "@my-nextjs-agent/agent/weather";
 
 type ToolCallStatus = "running" | "finished" | "error";
 
@@ -187,7 +187,7 @@ export default function ChatPage() {
     apiUrl: "http://localhost:2024",
     assistantId: "weatherAgent",
   });
-  const { messages, isLoading, interrupt, toolCalls } = stream;
+  const { messages, isLoading, stop, toolCalls } = stream;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -264,35 +264,39 @@ export default function ChatPage() {
             </div>
           ) : (
             <div className="space-y-5 pb-4">
-              {messages.map((msg) => {
-                const messageToolCalls = toolCalls.filter((toolCall) =>
-                  msg.tool_calls?.some((messageToolCall) => messageToolCall.id === toolCall.callId),
+              {typedMessages.map((message) => {
+                const messageToolCalls = typedToolCalls.filter((toolCall) =>
+                  message.tool_calls?.some(
+                    (messageToolCall) => messageToolCall.id === toolCall.callId,
+                  ),
                 );
 
                 return (
                   <div
-                    key={msg.id}
-                    className={`flex ${msg.type === "human" ? "justify-end" : "justify-start"}`}
+                    key={message.id}
+                    className={`flex ${message.type === "human" ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={`max-w-[85%] rounded-[24px] px-4 py-3 shadow-sm sm:max-w-[75%] ${
-                        msg.type === "human"
+                        message.type === "human"
                           ? "rounded-br-md bg-slate-950 text-white"
                           : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
                       }`}
                     >
                       <p
                         className={`mb-2 text-[11px] font-semibold tracking-[0.18em] uppercase ${
-                          msg.type === "human" ? "text-slate-300" : "text-blue-600"
+                          message.type === "human" ? "text-slate-300" : "text-blue-600"
                         }`}
                       >
-                        {msg.type === "human" ? "You" : "Assistant"}
+                        {message.type === "human" ? "You" : "Assistant"}
                       </p>
 
-                      {msg.type === "ai" ? (
+                      {message.type === "ai" ? (
                         <div className="space-y-3">
                           <div className="prose prose-slate max-w-none text-sm leading-7 prose-p:my-2 prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:bg-slate-950 prose-pre:px-4 prose-pre:py-3 prose-code:text-sm prose-strong:text-inherit">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {message.text}
+                            </ReactMarkdown>
                           </div>
                           {messageToolCalls.length > 0 ? (
                             <div className="space-y-3">
@@ -303,7 +307,7 @@ export default function ChatPage() {
                           ) : null}
                         </div>
                       ) : (
-                        <p className="whitespace-pre-wrap text-sm leading-7">{msg.text}</p>
+                        <p className="whitespace-pre-wrap text-sm leading-7">{message.text}</p>
                       )}
                     </div>
                   </div>
@@ -351,7 +355,7 @@ export default function ChatPage() {
                 {isLoading ? (
                   <button
                     type="button"
-                    onClick={() => interrupt()}
+                    onClick={() => void stop()}
                     className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
                   >
                     停止生成

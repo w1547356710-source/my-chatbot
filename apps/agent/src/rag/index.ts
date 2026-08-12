@@ -5,21 +5,14 @@ import { PineconeStore } from "@langchain/pinecone";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Pinecone as PineconeClient } from "@pinecone-database/pinecone";
 import { OllamaEmbeddings } from "@langchain/ollama";
+import { getEnv, requireEnv } from "@my-nextjs-agent/config";
+import type { DocumentMetadata } from "../shared";
 
-const DEFAULT_INDEX_NAME = process.env.PINECONE_INDEX_NAME ?? "document";
 const DEFAULT_TOP_K = 4;
 const DEFAULT_CHUNK_SIZE = 1200;
 const DEFAULT_CHUNK_OVERLAP = 200;
 
 let vectorStorePromise: Promise<PineconeStore> | undefined;
-
-function getRequiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
 
 export async function getVectorStore(): Promise<PineconeStore> {
   if (!vectorStorePromise) {
@@ -29,12 +22,10 @@ export async function getVectorStore(): Promise<PineconeStore> {
       });
 
       const pinecone = new PineconeClient({
-        apiKey: getRequiredEnv("PINECONE_API_KEY"),
+        apiKey: requireEnv("PINECONE_API_KEY"),
       });
 
-      const pineconeIndex = pinecone.Index({
-        name: DEFAULT_INDEX_NAME,
-      });
+      const pineconeIndex = pinecone.Index(getEnv("PINECONE_INDEX_NAME", "document")!);
 
       return new PineconeStore(embeddings, {
         pineconeIndex,
@@ -51,9 +42,9 @@ function filterNonEmptyDocuments(documents: Document[]): Document[] {
 }
 
 function normalizeMetadata(
-  metadata: Record<string, string | number | boolean> | undefined,
+  metadata: DocumentMetadata | undefined,
   source: string,
-): Record<string, string | number | boolean> {
+): DocumentMetadata {
   return {
     source,
     ...(metadata ?? {}),
@@ -68,7 +59,7 @@ export const retrieveFromPinecone = tool(
   }: {
     query: string;
     k?: number;
-    filter?: Record<string, string | number | boolean>;
+    filter?: DocumentMetadata;
   }): Promise<string> => {
     try {
       const vectorStore = await getVectorStore();
@@ -132,7 +123,7 @@ export const ingestToPinecone = tool(
   }: {
     content: string;
     source: string;
-    metadata?: Record<string, string | number | boolean>;
+    metadata?: DocumentMetadata;
     chunkSize?: number;
     chunkOverlap?: number;
   }): Promise<string> => {

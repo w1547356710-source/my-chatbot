@@ -5,5 +5,6 @@
 # Use submodules or separate repositories if strict Git permission isolation is required.
 
 /apps/web/ @your-org/web-team
-/packages/agent/ @your-org/agent-team
+/apps/agent/ @your-org/agent-team
+/packages/config/ @your-org/platform-team
 /docs/repo-ownership.md @your-org/platform-team

@@ -1,0 +1,8 @@
+{
+  "node_version": "22",
+  "graphs": {
+    "ragAgent": "./src/graphs.ts:ragAgent",
+    "weatherAgent": "./src/graphs.ts:weatherAgent"
+  },
+  "env": ".env"
+}

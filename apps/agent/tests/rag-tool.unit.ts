@@ -58,7 +58,7 @@ vi.mock("@langchain/textsplitters", () => ({
 
 async function loadModule() {
   vi.resetModules();
-  return import("../src/tools/rag-tool");
+  return import("../src/rag");
 }
 
 describe("rag-tool 的 Pinecone 集成测试", () => {
@@ -113,7 +113,7 @@ describe("rag-tool 的 Pinecone 集成测试", () => {
     });
 
     expect(mocks.pineconeClient).toHaveBeenCalledWith({ apiKey: "test-api-key" });
-    expect(mocks.indexFactory).toHaveBeenCalledWith({ name: "test-index" });
+    expect(mocks.indexFactory).toHaveBeenCalledWith("test-index");
     expect(mocks.similaritySearch).toHaveBeenCalledWith("How does LangGraph use Pinecone?", 2, {
       topic: "langgraph",
     });

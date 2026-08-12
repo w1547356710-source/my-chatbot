@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@my-nextjs-agent/agent"],
+  transpilePackages: ["@my-nextjs-agent/agent", "@my-nextjs-agent/config"],
   async redirects() {
     return [
       {
