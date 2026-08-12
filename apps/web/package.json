@@ -15,14 +15,14 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@ai-sdk/langchain": "^2.0.197",
-    "@ai-sdk/react": "^3.0.193",
+    "@ai-sdk/langchain": "^3.0.62",
+    "@ai-sdk/react": "^4.0.65",
     "@auth/drizzle-adapter": "^1.11.2",
     "@auth/neon-adapter": "^1.11.2",
-    "@langchain/react": "^1.0.11",
+    "@langchain/react": "^1.0.30",
     "@my-nextjs-agent/agent": "workspace:*",
     "@neondatabase/serverless": "^1.1.0",
-    "ai": "^6.0.191",
+    "ai": "^7.0.62",
     "bcrypt-ts": "^8.0.1",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",

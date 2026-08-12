@@ -7,15 +7,15 @@ export const deepseekModel = new ChatDeepSeek({
   timeout: 30000,
   maxTokens: 25000,
 });
-// export const deepseekModel = new ChatDeepSeek({
-//   model: "deepseek-v4-flash",
-//   apiKey: process.env.DEEPSEEK_API_KEY,
-//   temperature: 0,
-//   timeout: 30000,
-//   maxTokens: 25000,
-// });
+export const deepseekV4FModel = new ChatDeepSeek({
+  model: "deepseek-v4-flash",
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  temperature: 0,
+  timeout: 30000,
+  maxTokens: 25000,
+});
 
-export const deepseekProModel = new ChatDeepSeek({
+export const deepseekV4ProModel = new ChatDeepSeek({
   model: "deepseek-v4-pro",
   apiKey: getEnv("DEEPSEEK_API_KEY"),
   temperature: 0.5,

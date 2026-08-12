@@ -1,5 +1,5 @@
 import { createMiddleware } from "langchain";
-import { deepseekModel, deepseekProModel } from "../models";
+import { deepseekModel, deepseekV4ProModel } from "../models";
 
 export const dynamicModelSelection = createMiddleware({
   name: "DynamicModelSelection",
@@ -8,7 +8,7 @@ export const dynamicModelSelection = createMiddleware({
 
     return handler({
       ...request,
-      model: messageCount > 10 ? deepseekProModel : deepseekModel,
+      model: messageCount > 10 ? deepseekV4ProModel : deepseekModel,
     });
   },
 });
